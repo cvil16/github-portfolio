@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>3D God Mode Chaos - Kioku Memory System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            margin: 0;
+            background-color: #121018; /* Deep Midnight Slate from C++ build */
+            color: #e6e1f5; /* Soft Off-White text */
+            font-family: 'Press Start 2P', monospace;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 40px;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* ----- Background Ground Platform Decoration ----- */
+        .ground-platform {
+            position: absolute;
+            bottom: 0; left: 0; width: 100%; height: 65px;
+            background-color: #201c2c; /* Darker platform foundation */
+            border-top: 6px solid #0a080e; /* Hard black brick trim */
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        #game-container {
+            display: none; 
+            flex-direction: column;
+            align-items: center;
+            z-index: 10;
+        }
+
+        #hud-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 900px;
+        }
+
+        .hud-panel {
+            font-size: 10px;
+            font-weight: bold;
+            background: rgba(28, 25, 36, 0.96); /* colorHUDPanel */
+            padding: 12px 18px;
+            border: 2px solid #0a080e;
+            box-shadow: 4px 4px 0px #000;
+            color: #e6e1f5;
+        }
+
+        #mode-tag {
+            background: #ff9100; /* High-visibility Retro Orange */
+            color: #0a080e;
+            border-color: #0a080e;
+        }
+
+        /* Layout Switcher Buttons */
+        .layout-btn {
+            background: #2c2838; /* Dark internal button face */
+            color: #8c87b4; /* Soft lavender purple */
+            cursor: pointer;
+            font-family: 'Press Start 2P', monospace;
+            transition: all 0.1s;
+        }
+        .layout-btn.active {
+            background: #ff9100;
+            color: #0a080e;
+            border-color: #0a080e;
+        }
+        
+        /* Interactive Buttons */
+        #back-menu-btn {
+            background: #2c2838;
+            color: #e6e1f5;
+            cursor: pointer;
+            font-family: 'Press Start 2P', monospace;
+            transition: background 0.15s, transform 0.1s;
+        }
+        #back-menu-btn:hover {
+            background: #55628e; /* Controller Lavender Purple */
+            transform: translateY(-2px);
+        }
+
+        #quit-app-btn {
+            background: #b43232; /* Dark Mode Warning Red */
+            color: #ffffff;
+            cursor: pointer;
+            font-family: 'Press Start 2P', monospace;
+            transition: background 0.15s, transform 0.1s;
+        }
+        #quit-app-btn:hover {
+            background: #dc4646;
+            transform: translateY(-2px);
+        }
+
+        canvas {
+            background-color: #121018;
+            border: 3px solid #0a080e;
+            box-shadow: 0 12px 0px rgba(0,0,0,0.6);
+            cursor: grab;
+        }
+        canvas:active { cursor: grabbing; }
+
+        /* ----- Leaderboard Side Panel ----- */
+        #leaderboard-panel {
+            width: 320px;
+            background: rgba(28, 25, 36, 0.95);
+            border: 3px solid #0a080e;
+            padding: 20px;
+            box-shadow: 6px 6px 0px #000;
+            max-height: 480px;
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+        #leaderboard-panel h2 {
+            font-size: 12px;
+            margin-top: 0;
+            text-align: center;
+            color: #ff9100;
+            border-bottom: 4px solid #121018;
+            padding-bottom: 15px;
+        }
+        #score-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            overflow-y: auto;
+        }
+        #score-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 5px;
+            border-bottom: 2px solid #121018;
+            font-size: 9px;
+        }
+        .score-stats { color: #8c87b4; }
+        #score-list li:nth-child(1) { color: #ffd700; } 
+        #score-list li:nth-child(2) { color: #c0c0c0; } 
+        #score-list li:nth-child(3) { color: #cd7f32; } 
+
+        /* ----- Core Login Menu Overhaul ----- */
+        #login-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #121018;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+        }
+
+        .bubble-tag {
+            background: #e6e1f5;
+            color: #121018;
+            font-size: 10px;
+            padding: 8px 16px;
+            position: relative;
+            margin-bottom: -10px;
+            margin-left: -220px; 
+            z-index: 210;
+            box-shadow: 4px 4px 0px #000;
+        }
+        .bubble-tag::after {
+            content: '';
+            position: absolute;
+            bottom: -8px; left: 20px;
+            width: 0; height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 8px solid #e6e1f5;
+        }
+
+        #login-box {
+            background: rgba(28, 25, 36, 0.98); /* Console Pane */
+            border: 3px solid #0a080e;
+            padding: 40px 30px;
+            text-align: center;
+            width: 500px;
+            box-shadow: 10px 10px 0px #000;
+        }
+        #login-box h1 { 
+            color: #ff9100; /* High visibility Orange Title */
+            margin: 0 0 10px 0; 
+            font-size: 48px; 
+            letter-spacing: -2px;
+            text-shadow: 4px 4px 0px #0a080e;
+        }
+        .subtitle-ver {
+            font-size: 9px;
+            color: #8c87b4;
+            margin-bottom: 30px;
+            letter-spacing: 1px;
+        }
+        #login-box p {
+            font-size: 10px;
+            color: #e6e1f5;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        #login-box input {
+            width: 80%;
+            padding: 14px;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 12px;
+            border: 3px solid #0a080e;
+            background: #121018;
+            color: #ff9100;
+            text-align: center;
+            outline: none;
+            box-shadow: inset 4px 4px 0px #000;
+        }
+
+        .login-actions-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 35px;
+        }
+
+        #start-game-btn {
+            background-color: #ff9100;
+            color: #0a080e;
+            border: 3px solid #0a080e;
+            padding: 15px 30px;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 4px 4px 0px #000;
+            transition: transform 0.1s, background-color 0.1s;
+        }
+        #start-game-btn:hover {
+            background-color: #ffa733;
+            transform: translateY(-2px);
+        }
+
+        #overlay-quit-btn {
+            background-color: #b43232;
+            color: white;
+            border: 3px solid #0a080e;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 12px;
+            padding: 15px 30px;
+            cursor: pointer;
+            box-shadow: 4px 4px 0px #000;
+            transition: background-color 0.1s, transform 0.1s;
+        }
+        #overlay-quit-btn:hover {
+            background-color: #dc4646;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ground-platform"></div>
+
+    <div id="login-overlay">
+        <div class="bubble-tag">MEMORY GAME</div>
+        
+        <div id="login-box">
+            <h1>KIOKU</h1>
+            <div class="subtitle-ver">GROUP 9</div>
+            <p>FIND ITS PARTNER</p>
+            <input type="text" id="username-input" maxlength="10" placeholder="PLAYER1" autocomplete="off">
+        </div>
+
+        <div class="login-actions-container">
+            <button id="overlay-quit-btn">QUIT GAME</button>
+            <button id="start-game-btn">ENTER ARENA</button>
+        </div>
+    </div>
+
+    <div id="game-container">
+        <div id="hud-container">
+            <div class="hud-panel" id="mode-tag">CHAOS MODE</div>
+            <div class="hud-panel" id="hud">Moves: 0 &nbsp;|&nbsp; Time: 00:00</div>
+            
+            <button class="hud-panel layout-btn active" id="btn-sphere-view">SPHERE</button>
+            <button class="hud-panel layout-btn" id="btn-helix-view">HELIX</button>
+            
+            <button class="hud-panel" id="back-menu-btn">MAIN MENU</button>
+            <button class="hud-panel" id="quit-app-btn">QUIT</button>
+        </div>
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+    </div>
+
+    <div id="leaderboard-panel">
+        <h2>🏆 LEADERBOARD</h2>
+        <ul id="score-list"></ul>
+    </div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const hud = document.getElementById('hud');
+
+const loginOverlay = document.getElementById('login-overlay');
+const usernameInput = document.getElementById('username-input');
+const startGameBtn = document.getElementById('start-game-btn');
+const overlayQuitBtn = document.getElementById('overlay-quit-btn');
+const backMenuBtn = document.getElementById('back-menu-btn');
+const quitAppBtn = document.getElementById('quit-app-btn'); 
+const gameContainer = document.getElementById('game-container');
+const scoreListElement = document.getElementById('score-list');
+
+const btnSphereView = document.getElementById('btn-sphere-view');
+const btnHelixView = document.getElementById('btn-helix-view');
+
+let currentPlayerName = "Anonymous";
+let moves = 0;
+let matches = 0;
+let firstCard = null;
+let secondCard = null;
+let isLockoutActive = false;
+let gameRunning = false; 
+
+let startTime = 0;
+let timerInterval = null;
+let totalElapsedSeconds = 0;
+
+let currentLayoutMode = 'SPHERE';
+let layoutTransitionProgress = 0; 
+
+// Formulated bounding scales for 50 cards configuration
+const totalUniqueImages = 25; 
+const pairCount = 2;
+const totalCardsCount = totalUniqueImages * pairCount; // 50 items
+
+const RADIUS = 260; 
+const FOCAL_LENGTH = 500; 
+const CENTER_X = canvas.width / 2;
+const CENTER_Y = canvas.height / 2;
+
+let rotationY = 0;
+let rotationX = 0;
+let angleX = 0.0002; // Slower passive entry momentum X
+let angleY = 0.0004; // Slower passive entry momentum Y
+let isDragging = false;
+let previousMousePosition = { x: 0, y: 0 };
+let totalDraggedDistance = 0;
+
+// Dynamic texture mapping cache array
+const images = [];
+let loadedImageCount = 0;
+
+for (let i = 0; i < totalUniqueImages; i++) {
+    const img = new Image();
+    img.src = `assets/img_${i}.png`; 
+    img.onload = () => {
+        loadedImageCount++;
+        if (loadedImageCount === totalUniqueImages) {
+            updateLeaderboardDisplay();
+            usernameInput.focus();
+        }
+    };
+    img.onerror = () => {
+        loadedImageCount++;
+        if (loadedImageCount === totalUniqueImages) {
+            updateLeaderboardDisplay();
+            usernameInput.focus();
+        }
+    };
+    images.push(img);
+}
+
+let deck = [];
+const CARD_WIDTH = 52;
+const CARD_HEIGHT = 68;
+
+class Card {
+    constructor(textureId, index, totalCards) {
+        this.textureId = textureId;
+        this.state = 'HIDDEN'; 
+        this.index = index;
+        this.totalCards = totalCards;
+
+        // Fibonacci Golden Spiral Sphere Distribution
+        const goldenRatioInc = Math.PI * (3 - Math.sqrt(5));
+        const offset = 2.0 / totalCards;
+        
+        const yCoord = (index * offset) - 1 + (offset / 2);
+        const radiusAtY = Math.sqrt(1 - yCoord * yCoord);
+        const phiAngle = index * goldenRatioInc;
+
+        this.sphereX = RADIUS * Math.cos(phiAngle) * radiusAtY;
+        this.sphereY = RADIUS * yCoord;
+        this.sphereZ = RADIUS * Math.sin(phiAngle) * radiusAtY;
+
+        // Structured Helix Coordinate Distribution
+        this.helixTheta = (index * (Math.PI * 2 / 8)); 
+        this.helixX = (RADIUS * 1.0) * Math.cos(this.helixTheta);
+        this.helixY = ((index - (totalCards / 2)) * 18); 
+        this.helixZ = (RADIUS * 1.0) * Math.sin(this.helixTheta);
+
+        this.x3d = 0; this.y3d = 0; this.z3d = 0;
+        this.screenX = 0; this.screenY = 0;
+        this.scale = 1;
+    }
+
+    update3DProjection() {
+        let sTheta = rotationY;
+        let cosRY = Math.cos(sTheta);
+        let sinRY = Math.sin(sTheta);
+
+        let rxSphere = this.sphereX * cosRY - this.sphereZ * sinRY;
+        let rzSphere = this.sphereX * sinRY + this.sphereZ * cosRY;
+
+        let rxHelix = this.helixX * cosRY - this.helixZ * sinRY;
+        let rzHelix = this.helixX * sinRY + this.helixZ * cosRY;
+
+        let rawX = rxSphere + (rxHelix - rxSphere) * layoutTransitionProgress;
+        let rawY = this.sphereY + (this.helixY - this.sphereY) * layoutTransitionProgress;
+        let rawZ = rzSphere + (rzHelix - rzSphere) * layoutTransitionProgress;
+
+        let cosRX = Math.cos(rotationX);
+        let sinRX = Math.sin(rotationX);
+
+        this.x3d = rawX; 
+        this.y3d = rawY * cosRX - rawZ * sinRX;
+        this.z3d = rawY * sinRX + rawZ * cosRX;
+
+        this.scale = FOCAL_LENGTH / (FOCAL_LENGTH + this.z3d);
+        this.screenX = CENTER_X + this.x3d * this.scale;
+        this.screenY = CENTER_Y + this.y3d * this.scale;
+    }
+
+    draw() {
+        if (this.state === 'MATCHED') return; 
+
+        ctx.save();
+        ctx.translate(this.screenX, this.screenY);
+        
+        const w = CARD_WIDTH * this.scale;
+        const h = CARD_HEIGHT * this.scale;
+
+        let opacity = (this.z3d + RADIUS) / (2 * RADIUS); 
+        ctx.globalAlpha = Math.max(0.15, Math.min(1.0, 0.25 + opacity * 0.75)); 
+
+        if (this.state === 'HIDDEN') {
+            ctx.fillStyle = '#242030';
+            ctx.strokeStyle = '#0a080e';
+            ctx.lineWidth = Math.max(1, 2 * this.scale);
+            
+            ctx.beginPath();
+            ctx.rect(-w/2, -h/2, w, h);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#55628e';
+            ctx.fillRect(-3 * this.scale, -3 * this.scale, 6 * this.scale, 6 * this.scale);
+        } else {
+            ctx.fillStyle = '#f0eee9';
+            ctx.beginPath();
+            ctx.rect(-w/2, -h/2, w, h);
+            ctx.fill();
+            
+            ctx.strokeStyle = '#0a080e';
+            ctx.lineWidth = Math.max(1, 2 * this.scale);
+            ctx.stroke();
+            
+            try {
+                if (images[this.textureId] && images[this.textureId].complete && images[this.textureId].naturalWidth !== 0) {
+                    ctx.drawImage(images[this.textureId], -w/2 + 3, -h/2 + 3, w - 6, h - 6);
+                } else {
+                    ctx.fillStyle = '#b43232';
+                    ctx.font = `${Math.floor(10 * this.scale)}px monospace`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(`#${this.textureId}`, 0, 0);
+                }
+            } catch(e) {}
+        }
+        ctx.restore();
+    }
+
+    isClicked(mx, my) {
+        if (this.state === 'MATCHED') return false;
+        const w = CARD_WIDTH * this.scale;
+        const h = CARD_HEIGHT * this.scale;
+        return (mx >= this.screenX - w/2 && mx <= this.screenX + w/2 &&
+                my >= this.screenY - h/2 && my <= this.screenY + h/2);
+    }
+}
+
+btnSphereView.addEventListener('click', () => {
+    currentLayoutMode = 'SPHERE';
+    btnSphereView.classList.add('active');
+    btnHelixView.classList.remove('active');
+});
+
+btnHelixView.addEventListener('click', () => {
+    currentLayoutMode = 'HELIX';
+    btnHelixView.classList.add('active');
+    btnSphereView.classList.remove('active');
+});
+
+startGameBtn.addEventListener('click', () => {
+    let name = usernameInput.value.trim();
+    if (name === "") name = "PLAYER1";
+    currentPlayerName = name;
+    
+    loginOverlay.style.display = 'none';
+    gameContainer.style.display = 'flex';
+    
+    gameRunning = true;
+    initGame();
+    startTimer();
+});
+
+backMenuBtn.addEventListener('click', () => {
+    const confirmReturn = confirm("Abort current sequence run back to core terminal configuration?");
+    if (confirmReturn) returnToMainMenu();
+});
+
+quitAppBtn.addEventListener('click', () => {
+    const confirmQuit = confirm("Terminate application matrix instance execution runtime entirely?");
+    if (confirmQuit) closeApplicationWindow();
+});
+
+overlayQuitBtn.addEventListener('click', () => {
+    const confirmQuit = confirm("Terminate application matrix instance execution runtime entirely?");
+    if (confirmQuit) closeApplicationWindow();
+});
+
+function closeApplicationWindow() {
+    gameRunning = false;
+    clearInterval(timerInterval);
+    window.close();
+    setTimeout(() => {
+        returnToMainMenu();
+    }, 100);
+}
+
+function returnToMainMenu() {
+    gameRunning = false; 
+    clearInterval(timerInterval);
+    
+    firstCard = null;
+    secondCard = null;
+    isLockoutActive = false;
+    
+    gameContainer.style.display = 'none';
+    loginOverlay.style.display = 'flex';
+    
+    usernameInput.value = "";
+    usernameInput.focus();
+}
+
+function startTimer() {
+    if (timerInterval) clearInterval(timerInterval);
+    startTime = Date.now();
+    totalElapsedSeconds = 0;
+    
+    timerInterval = setInterval(() => {
+        if (!gameRunning) return;
+        totalElapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+        updateHUDDisplay();
+    }, 1000);
+}
+
+function formatTimeString(seconds) {
+    const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const secs = (seconds % 60).toString().padStart(2, '0');
+    return `${mins}:${secs}`;
+}
+
+function updateHUDDisplay() {
+    hud.innerHTML = `Moves: ${moves} &nbsp;|&nbsp; Time: ${formatTimeString(totalElapsedSeconds)}`;
+}
+
+function initGame() {
+    deck = [];
+    moves = 0;
+    matches = 0;
+    firstCard = null;
+    secondCard = null;
+    isLockoutActive = false;
+    rotationX = 0;
+    rotationY = 0;
+    layoutTransitionProgress = 0; 
+    updateHUDDisplay();
+
+    let pairsArray = [];
+    for (let i = 0; i < totalUniqueImages; i++) {
+        pairsArray.push(i);
+        pairsArray.push(i);
+    }
+
+    for (let i = pairsArray.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        let temp = pairsArray[i];
+        pairsArray[i] = pairsArray[j];
+        pairsArray[j] = temp;
+    }
+
+    for (let i = 0; i < pairsArray.length; i++) {
+        deck.push(new Card(pairsArray[i], i, pairsArray.length));
+    }
+    
+    requestAnimationFrame(renderLoop);
+}
+
+function shuffleDeckTexturedIDs() {
+    let hiddenCards = deck.filter(c => c.state === 'HIDDEN');
+    if (hiddenCards.length > 1) {
+        for (let i = hiddenCards.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            let temp = hiddenCards[i].textureId;
+            hiddenCards[i].textureId = hiddenCards[j].textureId;
+            hiddenCards[j].textureId = temp;
+        }
+    }
+}
+
+function renderLoop() {
+    if (!gameRunning) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (currentLayoutMode === 'HELIX' && layoutTransitionProgress < 1) {
+        layoutTransitionProgress += 0.04; 
+        if (layoutTransitionProgress > 1) layoutTransitionProgress = 1;
+    } else if (currentLayoutMode === 'SPHERE' && layoutTransitionProgress > 0) {
+        layoutTransitionProgress -= 0.04;
+        if (layoutTransitionProgress < 0) layoutTransitionProgress = 0;
+    }
+
+    // Drag-momentum decay and reduced auto-spin speed parameters
+    if (!isDragging) {
+        angleX *= 0.95; 
+        angleY *= 0.95; 
+        rotationY += 0.0007 + angleY; // Reduced from 0.0025 for a slower cinematic drift
+        rotationX += 0.0002 + angleX; // Reduced from 0.0005
+    }
+
+    deck.forEach(card => card.update3DProjection());
+    deck.sort((a, b) => b.z3d - a.z3d);
+    deck.forEach(card => card.draw());
+
+    requestAnimationFrame(renderLoop);
+}
+
+canvas.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    totalDraggedDistance = 0;
+    previousMousePosition = { x: e.clientX, y: e.clientY };
+});
+
+canvas.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const deltaX = e.clientX - previousMousePosition.x;
+    const deltaY = e.clientY - previousMousePosition.y;
+    
+    totalDraggedDistance += Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    
+    // Slower manual drag reaction speeds
+    angleY = deltaX * 0.0012; // Scaled down sensitivity from 0.004
+    angleX = deltaY * 0.0012; // Scaled down sensitivity from 0.004
+    
+    rotationY += angleY;
+    rotationX -= angleX; 
+    
+    previousMousePosition = { x: e.clientX, y: e.clientY };
+});
+
+window.addEventListener('mouseup', (e) => {
+    if (!isDragging) return;
+    isDragging = false;
+    
+    if (totalDraggedDistance < 6) {
+        handleCardTap(e);
+    }
+});
+
+function handleCardTap(e) {
+    if (isLockoutActive) return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    
+    const interactiveDeckOrder = [...deck].reverse();
+    
+    for (let card of interactiveDeckOrder) {
+        if (card.isClicked(mx, my) && card.state === 'HIDDEN') {
+            card.state = 'REVEALED';
+            if (!firstCard) {
+                firstCard = card;
+            } else {
+                secondCard = card;
+                moves++;
+                updateHUDDisplay();
+
+                if (firstCard.textureId === secondCard.textureId) {
+                    isLockoutActive = true;
+                    setTimeout(() => {
+                        firstCard.state = 'MATCHED';
+                        secondCard.state = 'MATCHED';
+                        matches++;
+                        updateHUDDisplay();
+                        firstCard = null;
+                        secondCard = null;
+                        isLockoutActive = false;
+                        if (matches === totalUniqueImages) handleVictory();
+                    }, 400);
+                } else {
+                    isLockoutActive = true;
+                    setTimeout(() => {
+                        firstCard.state = 'HIDDEN';
+                        secondCard.state = 'HIDDEN';
+                        shuffleDeckTexturedIDs(); 
+                        
+                        firstCard = null;
+                        secondCard = null;
+                        isLockoutActive = false;
+                    }, 600);
+                }
+            }
+            break;
+        }
+    }
+}
+
+function handleVictory() {
+    gameRunning = false; 
+    clearInterval(timerInterval);
+
+    let scores = JSON.parse(localStorage.getItem('godModeScores')) || [];
+    scores.push({ 
+        name: currentPlayerName, 
+        moves: moves, 
+        time: totalElapsedSeconds,
+        date: new Date().toLocaleDateString() 
+    });
+    
+    scores.sort((a, b) => a.moves === b.moves ? a.time - b.time : a.moves - b.moves);
+    scores = scores.slice(0, 10);
+    localStorage.setItem('godModeScores', JSON.stringify(scores));
+    
+    alert(`🏆 RUN COMPLETED SUCCESSFULLY!\nOperator: ${currentPlayerName.toUpperCase()}\nMoves: ${moves} | Time Duration: ${formatTimeString(totalElapsedSeconds)}`);
+    
+    updateLeaderboardDisplay();
+    returnToMainMenu();
+}
+
+function updateLeaderboardDisplay() {
+    let scores = JSON.parse(localStorage.getItem('godModeScores')) || [];
+    scoreListElement.innerHTML = "";
+    if (scores.length === 0) {
+        scoreListElement.innerHTML = `<li style="justify-content:center; color:#55628e;">NO RUN DATA FOUND</li>`;
+        return;
+    }
+    scores.forEach((entry, idx) => {
+        const item = document.createElement('li');
+        item.innerHTML = `<span>${idx + 1}. ${entry.name}</span> <span class="score-stats">${entry.moves}M / ${formatTimeString(entry.time || 0)}</span>`;
+        scoreListElement.appendChild(item);
+    });
+}
+
+usernameInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') startGameBtn.click(); });
+</script>
+</body>
+</html>
